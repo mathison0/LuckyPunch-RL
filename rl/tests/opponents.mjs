@@ -10,13 +10,13 @@ import { Game } from '../pika_env.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const D = path.join(HERE, '..', '..', 'src', 'code-here');
 
+// Phase 3 평가 상대 (사용자 지정). ai는 학습 상대·기준선으로 포함.
+// submit_v1은 기본 엔진(스킬 없음)에서 PikaPlanner_v4와 동작이 같다.
 export const EVAL_OPPONENTS = [
   'ai',
-  'LuckyPunch_v01.js', 'LuckyPunch_v03.js', 'LuckyPunch_v10.js', 'LuckyPunch_v16.js',
-  'PikaPlanner_v1.js', 'PikaPlanner_v2.js', 'PikaPlanner_v2_1_stable_candidate.js',
-  'PikaPlanner_v3_netfront_stable.js', 'PikaPlanner_v4.js',
-  'PikaPlanner_tuned_v1.js', 'PikaPlanner_tuned_v1_reference.js',
-  'submit_v1.js',
+  'LuckyPunch_v01.js', 'LuckyPunch_v05.js', 'LuckyPunch_v07.js', 'LuckyPunch_v10.js',
+  'LuckyPunch_v12.js', 'LuckyPunch_v14.js', 'LuckyPunch_v16.js',
+  'PikaPlanner_v4.js', 'submit_v1.js',
 ];
 
 function runRandom(opp, seed, side) {
