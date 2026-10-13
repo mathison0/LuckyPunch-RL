@@ -76,6 +76,25 @@ rl/.venv/Scripts/python rl/scripts/generalization_curve.py   # 체크포인트�
 `diagnose.py`는 랠리 종료 유형(못 받음·자기 실책·서브 미스·5회 접촉)과 서브/리시브 승률을 집계한다.
 결과는 `rl/results/diagnose_<tag>.{csv,md}`로 저장된다. 환경 쪽 랠리 로그는 명세에 `"log": true`를 넣을 때만 기록된다.
 
+## 브라우저 게임에서 RL 봇 쓰기 (JS 내보내기)
+
+학습된 정책을 대회 규약의 단일 JS 파일(`decide` 하나, import 없음)로 내보낸다.
+그러면 게임의 [봇 설정] 드롭다운에 다른 봇처럼 나타난다.
+
+```bash
+rl/.venv/Scripts/python rl/scripts/export_js.py rl/runs/pool_lagrand/final.zip src/code-here/LuckyPunchRL_v1.js
+```
+
+- `src/code-here/LuckyPunchRL_v1.js`는 2차 실험 pool_lagrand 최종 모델(2,002만 스텝)을 내보낸 것이다(156KB).
+- 검증: 같은 명세(상대 4종 × lag 1·2 × 24세트)로 PyTorch 정책과 JS 봇을 각각 에이전트 슬롯에 넣어 돌렸다. **192/192 게임에서 점수·프레임이 일치**했다.
+  ```bash
+  rl/.venv/Scripts/python rl/scripts/evaluate_final.py --tag js_check --seeds 6 --lags 1,2 ^
+      --opponents ai,LuckyPunch_v01.js,LuckyPunch_v10.js,LuckyPunch_v16.js ^
+      pool_lagrand=rl/runs/pool_lagrand/final.zip rule:LuckyPunchRL_v1.js
+  ```
+- 브라우저에서 보기: `npm install` 후 `npm start` → http://localhost:8080 → [게임 시작] → [봇 설정] → 한쪽을 `LuckyPunchRL v1 (JS)`로 고르고 [적용] → Enter.
+- 다른 봇과의 오프라인 대전은 `evaluate_final.py --opponents <봇파일>`을 쓴다(위 "평가" 절).
+
 ## 파일
 
 | 파일 | 역할 |
@@ -90,6 +109,7 @@ rl/.venv/Scripts/python rl/scripts/generalization_curve.py   # 체크포인트�
 | `scripts/train.py` | PPO 학습 + 주기 평가·체크포인트 |
 | `scripts/plot_curve.py` | 학습 곡선 그림 |
 | `scripts/evaluate_final.py` | Phase 3 평가표 (PPO·룰 봇·랜덤을 같은 명세로) |
+| `scripts/export_js.py` | 학습된 정책 → 대회 규약 단일 JS 봇 파일 |
 | `scripts/eval_rulebot.mjs` | 룰 봇 기준선 평가 (evaluate_final.py가 호출) |
 | `scripts/diagnose.py` | 랠리 종료 유형 진단 |
 | `scripts/generalization_curve.py` | 체크포인트별 일반화 곡선 |
