@@ -52,8 +52,14 @@ class NodeClient:
         self.obs_dim = int(r["obsDim"])
 
     def call(self, msg: dict) -> dict:
+        self.send(msg)
+        return self.recv()
+
+    def send(self, msg: dict):
         self.proc.stdin.write(json.dumps(msg, separators=(",", ":")) + "\n")
         self.proc.stdin.flush()
+
+    def recv(self) -> dict:
         line = self.proc.stdout.readline()
         if not line:
             raise RuntimeError(f"env_server 종료됨 (exit={self.proc.poll()}); 위 stderr 참고")
@@ -124,18 +130,27 @@ class PikaEnv(gym.Env):
 
 
 class PikaVecEnv(VecEnv):
-    """게임 n개를 Node 프로세스 1개에서 돌리는 배치 VecEnv. 끝난 게임은 다음 시드로 자동 리셋.
+    """게임 n개를 Node 프로세스 shards개에 나눠 배치로 돌리는 VecEnv. 끝난 게임은 다음 시드로 자동 리셋.
+
+    step은 모든 shard에 요청을 먼저 보내고 응답을 모아서 받으므로 shard들이 병렬로 진행한다
+    (상대 봇 decide가 무거울 때 Node 단일 스레드 병목을 피하기 위함).
 
     시드: slot i의 k번째 에피소드 = seed + k*n + i. 진영은 (k+i) 짝홀로 번갈아 → 양 진영 균등.
+    opponent가 목록이면 에피소드 번호 순으로 돌아가며 배정, lag가 목록이면 에피소드마다 무작위(시드 고정).
     """
 
-    def __init__(self, n: int, opponent: str | list[str] = "ai", lag: int = 1, jitter: int = 0,
-                 shaping: bool = False, touch_bonus: float = DEFAULT_TOUCH_BONUS, seed: int = 0):
-        self.client = NodeClient(n)
-        obs_space = spaces.Box(-np.inf, np.inf, (self.client.obs_dim,), np.float32)
+    def __init__(self, n: int, opponent: str | list[str] = "ai", lag: int | list[int] = 1, jitter: int = 0,
+                 shaping: bool = False, touch_bonus: float = DEFAULT_TOUCH_BONUS, seed: int = 0, shards: int = 1):
+        shards = max(1, min(shards, n))
+        # slot i → (shard, shard 안 인덱스). 앞쪽 shard부터 균등 분할
+        self.shard_sizes = [n // shards + (1 if j < n % shards else 0) for j in range(shards)]
+        self.clients = [NodeClient(m) for m in self.shard_sizes]
+        self.slot_map = [(j, li) for j, m in enumerate(self.shard_sizes) for li in range(m)]
+        obs_space = spaces.Box(-np.inf, np.inf, (self.clients[0].obs_dim,), np.float32)
         super().__init__(n, obs_space, spaces.Discrete(N_ACTIONS))
         self.opponents = opponent if isinstance(opponent, list) else [opponent]
-        self.lag, self.jitter, self.shaping, self.touch_bonus = lag, jitter, shaping, touch_bonus
+        self.lags = lag if isinstance(lag, list) else [lag]
+        self.jitter, self.shaping, self.touch_bonus = jitter, shaping, touch_bonus
         self.base_seed = seed
         self.episode_k = [0] * n
         self._actions = None
@@ -143,11 +158,18 @@ class PikaVecEnv(VecEnv):
     def _reset_slot(self, i: int) -> np.ndarray:
         k = self.episode_k[i]
         self.episode_k[i] += 1
-        r = self.client.call({
-            "cmd": "reset", "i": i, "seed": self.base_seed + k * self.num_envs + i,
+        g = k * self.num_envs + i  # 이 env의 전체 에피소드 번호
+        # lag 목록이 여러 개면 에피소드마다 시드 고정 난수로 하나를 뽑는다 (지연 무작위화)
+        if len(self.lags) == 1:
+            lag = self.lags[0]
+        else:
+            lag = self.lags[int(np.random.default_rng([self.base_seed, g]).integers(len(self.lags)))]
+        shard, li = self.slot_map[i]
+        r = self.clients[shard].call({
+            "cmd": "reset", "i": li, "seed": self.base_seed + g,
             "side": "LEFT" if (k + i) % 2 == 0 else "RIGHT",
-            "opponent": self.opponents[(k * self.num_envs + i) % len(self.opponents)],
-            "lag": self.lag, "jitter": self.jitter,
+            "opponent": self.opponents[g % len(self.opponents)],
+            "lag": lag, "jitter": self.jitter,
         })
         return np.asarray(r["obs"], np.float32)
 
@@ -158,7 +180,12 @@ class PikaVecEnv(VecEnv):
         self._actions = [int(a) for a in actions]
 
     def step_wait(self):
-        r = self.client.call({"cmd": "step", "a": self._actions})
+        pos = 0
+        for c, m in zip(self.clients, self.shard_sizes):  # 먼저 전부 보내고
+            c.send({"cmd": "step", "a": self._actions[pos:pos + m]})
+            pos += m
+        parts = [c.recv() for c in self.clients]  # 그다음 모아서 받는다 (shard끼리 병렬 진행)
+        r = {k: [x for p in parts for x in p[k]] for k in ("obs", "ev", "done", "info")}
         obs = np.asarray(r["obs"], np.float32)
         rews = np.zeros(self.num_envs, np.float32)
         dones = np.asarray(r["done"], bool)
@@ -176,7 +203,8 @@ class PikaVecEnv(VecEnv):
         return obs, rews, dones, infos
 
     def close(self):
-        self.client.close()
+        for c in self.clients:
+            c.close()
 
     # SB3 VecEnv 추상 메서드 — 이 환경에선 쓰지 않는다
     def get_attr(self, attr_name, indices=None):
