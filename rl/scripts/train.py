@@ -37,6 +37,8 @@ POOLS = {
     "pool7": ["ai", "LuckyPunch_v01.js", "LuckyPunch_v05.js", "LuckyPunch_v07.js", "LuckyPunch_v10.js",
               "LuckyPunch_v12.js", "LuckyPunch_v14.js"],
 }
+# 3차 실험: pool7 + 수비형 PikaPlanner 2종. PikaPlanner_v4·v2_1과 v16은 홀드아웃
+POOLS["pool9"] = POOLS["pool7"] + ["PikaPlanner_v2.js", "PikaPlanner_v3_netfront_stable.js"]
 
 
 class EvalCallback(BaseCallback):
