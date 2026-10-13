@@ -19,6 +19,17 @@ node rl/tests/opponents.mjs                       # 평가 상대 9종 로드·�
 rl/.venv/Scripts/python rl/scripts/verify_env.py  # env_checker / 재현성 / steps/s / 랜덤 vs AI
 ```
 
+## 학습 (Phase 2)
+
+```bash
+rl/.venv/Scripts/python rl/scripts/train.py --name shaping_off --total-steps 20000000 --eval-every 500000
+rl/.venv/Scripts/python rl/scripts/train.py --name shaping_on --shaping --total-steps 20000000 --eval-every 500000
+rl/.venv/Scripts/python rl/scripts/plot_curve.py   # → docs/strategy/img/rl_learning_curve.png
+```
+
+산출물은 `rl/runs/<name>/`에 저장된다(git 제외). 구성은 `learning_curve.csv`(주기 평가), `checkpoints/step_*.zip`,
+`final.zip`, `sb3_log/progress.csv`, `config.json`이다.
+
 ## 파일
 
 | 파일 | 역할 |
@@ -29,3 +40,6 @@ rl/.venv/Scripts/python rl/scripts/verify_env.py  # env_checker / 재현성 / st
 | `tests/parity.mjs` | arena `playSet()`과의 동일성 검사 |
 | `tests/opponents.mjs` | 평가 상대 9종(`EVAL_OPPONENTS`) 로드·재현성·속도 스모크 테스트 |
 | `scripts/verify_env.py` | Phase 1 검증 스크립트 |
+| `pikarl/evaluate.py` | 평가 러너 (프로토콜 명세 생성, 배치 플레이, 승률 집계) — 학습 중 평가와 Phase 3 공용 |
+| `scripts/train.py` | PPO 학습 + 주기 평가·체크포인트 |
+| `scripts/plot_curve.py` | 학습 곡선 그림 |

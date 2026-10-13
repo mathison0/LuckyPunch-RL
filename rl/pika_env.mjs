@@ -323,6 +323,7 @@ export class Game {
 
   step(action) {
     this.ev = [0, 0, 0];
+    if (this.done) return this.ev; // 끝난 게임은 그대로 둔다 (배치 평가에서 남은 슬롯이 놀 때)
     setCustomRng(this.rng); // 엔진 RNG는 전역 1개 → 이 게임 차례에 이 게임의 스트림으로 바꿔 끼운다
     this.prevSnap = this.snap;
     const r = this.gen.next(action);
