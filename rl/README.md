@@ -30,6 +30,17 @@ rl/.venv/Scripts/python rl/scripts/plot_curve.py   # → docs/strategy/img/rl_le
 산출물은 `rl/runs/<name>/`에 저장된다(git 제외). 구성은 `learning_curve.csv`(주기 평가), `checkpoints/step_*.zip`,
 `final.zip`, `sb3_log/progress.csv`, `config.json`이다.
 
+## 평가 (Phase 3)
+
+```bash
+rl/.venv/Scripts/python rl/scripts/evaluate_final.py --tag final --lags 1 ^
+    ppo_off=rl/runs/shaping_off/final.zip ppo_on=rl/runs/shaping_on/final.zip rule:LuckyPunch_v16.js random
+```
+
+평가 상대는 `rl/tests/opponents.mjs`의 `EVAL_OPPONENTS` 9종이다. 상대마다 지터 {0,8} × 시드 24 × 양 진영 = 96세트를 둔다.
+`rule:<봇>`은 룰 봇을 에이전트 슬롯에 넣어 같은 명세로 평가하는 기준선이다.
+결과는 `rl/results/eval_<tag>.csv`(게임별 원자료)와 `eval_<tag>.md`(요약표)로 저장된다.
+
 ## 파일
 
 | 파일 | 역할 |
@@ -43,3 +54,5 @@ rl/.venv/Scripts/python rl/scripts/plot_curve.py   # → docs/strategy/img/rl_le
 | `pikarl/evaluate.py` | 평가 러너 (프로토콜 명세 생성, 배치 플레이, 승률 집계) — 학습 중 평가와 Phase 3 공용 |
 | `scripts/train.py` | PPO 학습 + 주기 평가·체크포인트 |
 | `scripts/plot_curve.py` | 학습 곡선 그림 |
+| `scripts/evaluate_final.py` | Phase 3 평가표 (PPO·룰 봇·랜덤을 같은 명세로) |
+| `scripts/eval_rulebot.mjs` | 룰 봇 기준선 평가 (evaluate_final.py가 호출) |
