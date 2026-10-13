@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import matplotlib
@@ -22,7 +23,7 @@ import pandas as pd  # noqa: E402
 RL = Path(__file__).resolve().parent.parent
 RUNS = RL / "runs"
 LABELS = {"shaping_off": "shaping OFF (+1/-1 only)", "shaping_on": "shaping ON (+0.05 per touch)"}
-HOLDOUT = {"LuckyPunch_v16.js", "PikaPlanner_v4.js"}
+HOLDOUT = {"LuckyPunch_v16.js", "PikaPlanner_v4.js"}  # config.json이 없을 때만 쓰는 기본값
 
 
 def load(name: str) -> pd.DataFrame | None:
@@ -66,9 +67,11 @@ def plot_per_opponent(runs: list[str], out: str):
         if df is None:
             continue
         n = int(df["eval_sets"].iloc[-1])
+        cfg = RUNS / name / "config.json"
+        train_list = set(json.loads(cfg.read_text()).get("opponent_list", [])) if cfg.exists() else None
         for opp, d in df.groupby("opponent", sort=False):
             label = "built-in AI" if opp == "ai" else Path(opp).stem.replace("LuckyPunch_", "")
-            held = opp in HOLDOUT
+            held = (opp not in train_list) if train_list else opp in HOLDOUT
             ax.plot(d.steps / 1e6, d.rally_win * 100, marker="o", ms=3,
                     ls="--" if held else "-", label=label + (" (held-out)" if held else " (train pool)"))
         ax.set_title(f"{name}: rally win % (n={n} sets/point)")

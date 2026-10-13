@@ -238,6 +238,8 @@ arena 엔진을 감싼 학습 환경에 PPO를 붙여 룰 봇과 같은 프로�
 - 2차(상대 풀 7종으로 학습, v16·PikaPlanner_v4 홀드아웃): 평가 9종 평균 87~88%, 홀드아웃 v16 97~100%, 추가 홀드아웃 16종 평균 67~68%(v16은 56%).
   모두 lag 1 기준이다. 지연 무작위 학습 모델(pool_lagrand)은 lag 3에서도 확장 평가 78%다.
   PikaPlanner v2 이후 계열과 skill-example에는 여전히 0~8%다(v16도 lag 1에서 0~21%).
+- 3차(pool9 = 2차 풀 + PikaPlanner v2·v3): lag 1에서는 여전히 이 계열을 못 뚫는다(학습 상대 v3도 3%).
+  lag 2~3에서는 홀드아웃 v4·v2_1까지 뚫린다. PikaPlanner v2~v4는 `ACTION_LATENCY: 1`(반영 지연 1프레임 가정) 플래너라 lag 1에서만 견고하다.
 - 최종 모델: `rl/runs/pool_lagrand/final.zip` (runs/는 git 제외. 재학습 명령은 rl/README.md).
 - 평가는 스킬 없는 조건이다(arena에도 게이지·클로 스킬이 없다). submit_v1은 이 조건에서 PikaPlanner_v4와 같아 평가에서 뺐다.
 - 상대 봇의 `Math.random`은 RL 환경에서 시드 고정이다(arena `loadBot`은 고정 안 됨 → v07·v09·v10·v11 결과가 실행마다 달라질 수 있다).

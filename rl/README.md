@@ -41,6 +41,14 @@ rl/.venv/Scripts/python rl/scripts/evaluate_final.py --tag pool --lags 1,2,3 ^
     pool_lag1=rl/runs/pool_lag1/final.zip pool_lagrand=rl/runs/pool_lagrand/final.zip
 ```
 
+3차 실험(pool9 = pool7 + PikaPlanner v2·v3, PikaPlanner_v4·v2_1·v16 홀드아웃):
+
+```bash
+rl/.venv/Scripts/python rl/scripts/train.py --name pool9_lagrand --shaping --opponents pool9 --lags 1,2,3 --shards 8 ^
+    --total-steps 20000000 --eval-every 1000000 --eval-seeds 6 ^
+    --eval-opponents ai,LuckyPunch_v16.js,PikaPlanner_v2.js,PikaPlanner_v2_1_stable_candidate.js,PikaPlanner_v4.js
+```
+
 확장 평가(나머지 봇 16종)는 `evaluate_final.py --tag extended --opponents <쉼표 목록>`으로 돌린다. 목록은 `rl/results/eval_extended.md`에 있다.
 
 산출물은 `rl/runs/<name>/`에 저장된다(git 제외). 구성은 `learning_curve.csv`(주기 평가), `checkpoints/step_*.zip`,
