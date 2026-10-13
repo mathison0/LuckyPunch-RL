@@ -27,6 +27,22 @@ rl/.venv/Scripts/python rl/scripts/train.py --name shaping_on --shaping --total-
 rl/.venv/Scripts/python rl/scripts/plot_curve.py   # → docs/strategy/img/rl_learning_curve.png
 ```
 
+2차 실험(상대 풀 7종, v16·PikaPlanner_v4 홀드아웃):
+
+```bash
+rl/.venv/Scripts/python rl/scripts/train.py --name pool_lag1 --shaping --opponents pool7 --lags 1 --shards 4 ^
+    --total-steps 20000000 --eval-every 1000000 --eval-seeds 6 ^
+    --eval-opponents ai,LuckyPunch_v14.js,LuckyPunch_v16.js,PikaPlanner_v4.js
+rl/.venv/Scripts/python rl/scripts/train.py --name pool_lagrand --shaping --opponents pool7 --lags 1,2,3 --shards 4 ^
+    --total-steps 20000000 --eval-every 1000000 --eval-seeds 6 ^
+    --eval-opponents ai,LuckyPunch_v14.js,LuckyPunch_v16.js,PikaPlanner_v4.js
+rl/.venv/Scripts/python rl/scripts/plot_curve.py pool_lag1 pool_lagrand --per-opponent --out docs/strategy/img/rl_pool_curve.png
+rl/.venv/Scripts/python rl/scripts/evaluate_final.py --tag pool --lags 1,2,3 ^
+    pool_lag1=rl/runs/pool_lag1/final.zip pool_lagrand=rl/runs/pool_lagrand/final.zip
+```
+
+확장 평가(나머지 봇 16종)는 `evaluate_final.py --tag extended --opponents <쉼표 목록>`으로 돌린다. 목록은 `rl/results/eval_extended.md`에 있다.
+
 산출물은 `rl/runs/<name>/`에 저장된다(git 제외). 구성은 `learning_curve.csv`(주기 평가), `checkpoints/step_*.zip`,
 `final.zip`, `sb3_log/progress.csv`, `config.json`이다.
 
