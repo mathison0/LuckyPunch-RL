@@ -7,12 +7,15 @@
 - `arena/` — 오프라인 대전 하네스
 - `docs/strategy/` — 버전별 전략 상세 (설계 의도·측정·기각 사유). 인덱스와 `lag` 용어 정의는 `README.md`
 - `CLAUDE.md` — 이 문서
+- `rl/` — RL 에이전트 실험 (아래 "RL 실험" 절, 이 레포 `mathison0/LuckyPunch-RL`에서만 존재)
 
 ```
 git remote -v
   origin    https://github.com/mathison0/LuckyPunch.git          (우리 작업)
   upstream  https://github.com/SKKU-x-HYU-SW-Competition/leonyi-volleyball.git  (운영측 원본)
 ```
+
+(이 `LuckyPunch-RL` 클론에서는 `origin` = `mathison0/LuckyPunch-RL`, 팀 레포는 `team`이라는 이름의 remote이고 push가 막혀 있다.)
 
 운영측이 코드를 갱신하면 `git fetch upstream && git merge upstream/main` 후
 `bash arena/sync-engine.sh`로 하네스의 엔진 사본도 다시 맞춘다.
@@ -223,6 +226,19 @@ vy = -max(|공의 vy|, 15)
 
 `arena/` — 브라우저 없이 실제 엔진으로 수백 세트를 돌린다. 사용법은 그 폴더의 README.
 엔진이 갱신되면(당일 스킬 추가 등) `bash arena/sync-engine.sh`를 다시 돌릴 것.
+
+## RL 실험 (rl/)
+
+arena 엔진을 감싼 학습 환경에 PPO를 붙여 룰 봇과 같은 프로토콜로 비교했다. 상세는 `docs/strategy/rl.md`, 재현 명령은 `rl/README.md`.
+
+- 환경: `rl/pika_env.mjs`가 `playSet()` 루프를 결정 tick(3프레임) 단위로 쪼갠다. lag·정지 구간·5회 접촉 규칙이 같다.
+  arena와 점수·프레임 일치 72/72(`node rl/tests/parity.mjs`). 관측 37차원(스냅샷만, 좌우 미러링), 행동 Discrete(18).
+- **arena는 수정하지 않는다.** RL 코드는 전부 `rl/` 아래에 있다. 상수(TICK, 정지 구간 등)는 복제했으니 엔진이 바뀌면 같이 맞출 것.
+- 결과(lag 1, 상대당 96세트): PPO는 내장 AI 랠리 100%, v10 세트 62~84%로 v16보다 잘 이긴다.
+  하지만 v01·v12·v14·v16·PikaPlanner_v4에게는 세트 0~3%다. 상대 풀 평균은 v16 65% vs PPO 40~43%.
+  원인은 학습 상대(내장 AI) 과적합으로 본다. AI 상대가 포화한 뒤 다른 상대 성능이 오르지 않았다.
+- 평가는 스킬 없는 조건이다(arena에도 게이지·클로 스킬이 없다). submit_v1은 이 조건에서 PikaPlanner_v4와 같아 평가에서 뺐다.
+- 상대 봇의 `Math.random`은 RL 환경에서 시드 고정이다(arena `loadBot`은 고정 안 됨 → v07·v09·v10·v11 결과가 실행마다 달라질 수 있다).
 
 ## 급강하 스매시가 성립하는 조건 (직접 계측)
 

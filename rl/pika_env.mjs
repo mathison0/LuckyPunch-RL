@@ -223,8 +223,9 @@ class AgentRunner {
 // ── 한 세트 = generator. arena.mjs playSet()의 루프를 그대로 따르되, 에이전트 결정 tick마다 yield ──
 // yield 값: 스냅샷. resume 값: 행동 인덱스. this.ev에 마지막 yield 이후 이벤트가 쌓인다.
 export class Game {
-  constructor({ seed = 1, opponent = 'ai', side = 'LEFT', lag = 1, jitter = 0 }) {
+  constructor({ seed = 1, opponent = 'ai', side = 'LEFT', lag = 1, jitter = 0, log = false }) {
     this.seed = seed; this.side = side; this.lag = lag; this.jitter = jitter;
+    this.log = log ? [] : null; // 진단용 랠리 로그 (평가·학습에는 끄고 씀)
     this.opponent = opponent;
     this.rng = makeRng(seed);
     // 상대 봇 Math.random은 엔진 RNG와 별도 스트림 (상대 종류가 엔진 난수열을 바꾸지 않도록)
@@ -293,6 +294,12 @@ export class Game {
       for (let i = 0; i < frozen; i++) { yield* inputsForFrame(); frame++; }
 
       let rallyFrames = 0;
+      // 진단 로그용 랠리 상태 (에이전트 관점; x는 LEFT 기준으로 미러링)
+      const fx = (x) => (this.side === 'RIGHT' ? GROUND_WIDTH - x : x);
+      const R = this.log && {
+        serve: isPlayer2Serve === (this.agentIdx === 1) ? 1 : 0, st: 0, ot: 0, sph: 0, oph: 0, cross: 0, last: 'none',
+      };
+      let prevLeft = null;
       while (true) {
         yield* inputsForFrame();
         const grounded = physics.runEngineForNextFrame(inputs);
@@ -300,12 +307,27 @@ export class Game {
         rallyFrames++;
         const t = touch.observe(physics);
         if (t.touched[this.agentIdx]) this.ev[2] += 1;
+        if (R) {
+          const isP = physics.ball.isPowerHit;
+          if (t.touched[this.agentIdx]) { R.st++; R.last = 'self'; if (isP) R.sph++; }
+          if (t.touched[1 - this.agentIdx]) { R.ot++; R.last = 'opp'; if (isP) R.oph++; }
+          const left = physics.ball.x < NET_X;
+          if (prevLeft !== null && left !== prevLeft) R.cross++;
+          prevLeft = left;
+        }
         let winner = -1;
         if (t.loser >= 0) winner = t.loser === 0 ? 1 : 0;
         else if (grounded) winner = physics.ball.punchEffectX < NET_X ? 1 : 0;
         if (winner >= 0) {
           scores[winner] += 1;
           if (winner === this.agentIdx) this.ev[0] += 1; else this.ev[1] += 1;
+          if (R) {
+            const me = this.agentIdx === 0 ? physics.player1 : physics.player2;
+            this.log.push({
+              ...R, won: winner === this.agentIdx ? 1 : 0, cause: t.loser >= 0 ? 'limit' : 'ground', frames: rallyFrames,
+              landX: fx(physics.ball.punchEffectX), selfX: fx(me.x), selfY: me.y, selfState: me.state,
+            });
+          }
           isPlayer2Serve = random() < 0.5;
           break;
         }
@@ -316,6 +338,7 @@ export class Game {
     return {
       scoreSelf: scores[a], scoreOpp: scores[1 - a], win: scores[a] > scores[1 - a],
       frames: frame, rallies, oppErrors: opp.errors,
+      ...(this.log ? { rallyLog: this.log } : {}),
     };
   }
 

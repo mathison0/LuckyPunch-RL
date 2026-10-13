@@ -41,6 +41,17 @@ rl/.venv/Scripts/python rl/scripts/evaluate_final.py --tag final --lags 1 ^
 `rule:<봇>`은 룰 봇을 에이전트 슬롯에 넣어 같은 명세로 평가하는 기준선이다.
 결과는 `rl/results/eval_<tag>.csv`(게임별 원자료)와 `eval_<tag>.md`(요약표)로 저장된다.
 
+## 분석 (rl.md 5절)
+
+```bash
+rl/.venv/Scripts/python rl/scripts/diagnose.py --tag lag1 ^
+    ppo_off=rl/runs/shaping_off/final.zip ppo_on=rl/runs/shaping_on/final.zip rule:LuckyPunch_v16.js
+rl/.venv/Scripts/python rl/scripts/generalization_curve.py   # 체크포인트별 비학습 상대 승률
+```
+
+`diagnose.py`는 랠리 종료 유형(못 받음·자기 실책·서브 미스·5회 접촉)과 서브/리시브 승률을 집계한다.
+결과는 `rl/results/diagnose_<tag>.{csv,md}`로 저장된다. 환경 쪽 랠리 로그는 명세에 `"log": true`를 넣을 때만 기록된다.
+
 ## 파일
 
 | 파일 | 역할 |
@@ -56,3 +67,6 @@ rl/.venv/Scripts/python rl/scripts/evaluate_final.py --tag final --lags 1 ^
 | `scripts/plot_curve.py` | 학습 곡선 그림 |
 | `scripts/evaluate_final.py` | Phase 3 평가표 (PPO·룰 봇·랜덤을 같은 명세로) |
 | `scripts/eval_rulebot.mjs` | 룰 봇 기준선 평가 (evaluate_final.py가 호출) |
+| `scripts/diagnose.py` | 랠리 종료 유형 진단 |
+| `scripts/generalization_curve.py` | 체크포인트별 일반화 곡선 |
+| `results/` | 평가·진단 결과 (커밋됨) |
